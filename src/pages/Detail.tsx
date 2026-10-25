@@ -192,6 +192,26 @@ export default function Detail() {
 
       <Facts e={e} />
 
+      {e.program && e.program.length > 0 && (
+        <section className="block">
+          <h2>회차 {e.program.length}개</h2>
+          <ol className="upcoming program">
+            {e.program.map((p) => (
+              <li key={p.date + p.title} className={p.date < t ? 'past' : ''}>
+                <span className="num">
+                  {Number(p.date.slice(5, 7))}.{Number(p.date.slice(8))}
+                  <small>{weekday(p.date)}</small>
+                </span>
+                <div>
+                  <strong>{p.title}</strong>
+                  {p.time && <span>{p.time}</span>}
+                </div>
+              </li>
+            ))}
+          </ol>
+        </section>
+      )}
+
       {e.end >= t && (
         <section className="block">
           <h2>언제 갈까요</h2>

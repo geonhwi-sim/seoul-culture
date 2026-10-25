@@ -36,6 +36,8 @@ export interface CultureEvent {
   cast?: string
   summary?: string
   booking: BookingLink[]
+  /** 패키지로 묶인 회차 공연들 (날짜순) */
+  program?: { date: string; title: string; time?: string }[]
   officialUrl?: string
   /** 처음 수집된 날 (YYYY-MM-DD) — '새로 등록됨' 판별용 */
   firstSeenAt: string

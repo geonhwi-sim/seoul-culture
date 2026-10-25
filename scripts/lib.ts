@@ -123,9 +123,13 @@ function withoutQualifier(title: string) {
   return norm(title.replace(/^\s*\[[^\]]*\]\s*(?=\S)/, '').replace(/\s*\[[^\]]*\]\s*$/, ''))
 }
 
-/** 괄호 속 핵심 제목들 (맨 앞 기관명 괄호와 끝 꼬리표 '[대학로]'는 제외, 3글자 이상) */
+/** 끝 괄호가 장소·패키지 꼬리표인지 ('[대학로]', '[서울 구로]', '[일반 패키지]'). '[한 잔의 여유 시리즈]'는 아님 */
+const QUALIFIER = /서울|대학로|패키지|명동|홍대|강남|잠실|성수|신촌|혜화|구$/
+const stripQualifier = (t: string) => t.replace(/\s*\[([^\]]*)\]\s*$/, (m, inner: string) => (QUALIFIER.test(inner.trim()) ? '' : m))
+
+/** 괄호 속 핵심 제목들 (맨 앞 기관명 괄호와 끝 꼬리표는 제외, 3글자 이상) */
 function bracketCores(title: string) {
-  const body = title.replace(/^\s*\[[^\]]*\]\s*(?=\S)/, '').replace(/\s*\[[^\]]*\]\s*$/, '')
+  const body = stripQualifier(title.replace(/^\s*\[[^\]]*\]\s*(?=\S)/, ''))
   return [...body.matchAll(/[[<《〈「『*]([^\]>》〉」』*]+)[\]>》〉」』*]/g)].map((m) => norm(m[1])).filter((c) => c.length >= 3)
 }
 
@@ -153,7 +157,7 @@ function longestCommon(a: string, b: string) {
  *    (같은 출처 안에서 따로 등록된 건 '월드 2인극 페스티벌, 반창고 / 우로보로스'처럼 대개 다른 작품)
  */
 export function likelySame(
-  a: { title: string; venue: string; start: string; end: string; sources: string[]; area?: string },
+  a: { title: string; venue: string; start: string; end: string; sources: string[]; area?: string; time?: string },
   b: typeof a,
 ) {
   if (a.start !== b.start || a.end !== b.end) return false
@@ -168,7 +172,12 @@ export function likelySame(
   if ((shortLen >= 4 || (shortLen >= 2 && venueOk)) && (ka.includes(kb) || kb.includes(ka))) return true
   const qa = withoutQualifier(a.title)
   if (qa.length >= 3 && qa === withoutQualifier(b.title)) return true
-  if (a.sources.some((s) => b.sources.includes(s))) return false
+  if (a.sources.some((s) => b.sources.includes(s))) {
+    // 같은 출처: 같은 홀·같은 시각이면 물리적으로 같은 공연 (한글/영문 제목 이중 등록 등)
+    // 홀 이름까지 비교 (예술의전당 IBK챔버홀 ≠ 리사이틀홀)
+    const sameSlot = !!a.time && a.time === b.time && norm(a.venue) === norm(b.venue)
+    return sameSlot && longestCommon(ka, kb) >= Math.max(ka.length, kb.length) * 0.6
+  }
   if (bracketCores(a.title).some((c) => kb.includes(c)) || bracketCores(b.title).some((c) => ka.includes(c))) return true
   const common = longestCommon(ka, kb)
   return common >= 4 && common >= Math.min(ka.length, kb.length) * 0.5
@@ -187,6 +196,27 @@ export function displayTitle(title: string) {
   const close = BRACKETS[t[0]]
   if (close && t.endsWith(close) && t.indexOf(close) === t.length - 1) t = t.slice(1, -1).trim()
   return t || title
+}
+
+/**
+ * 패키지 행사의 시리즈 이름: '[패키지] 서리풀 서초9 시리즈 (11월)' → '서리풀 서초9 시리즈',
+ * '제1회 ST-NOVA [일반 패키지]' → '제1회 ST-NOVA'. 패키지가 아니면 undefined
+ */
+export function packageSeries(title: string) {
+  if (!/패키지/.test(title)) return undefined
+  const name = title
+    .replace(/\[[^\]]*패키지[^\]]*\]|\([^)]*패키지[^)]*\)|패키지/g, '')
+    .replace(/\(\s*\d{1,2}\s*월\s*\)/g, '')
+    .replace(/\s+/g, ' ')
+    .trim()
+  return name.length >= 3 ? name : undefined
+}
+
+/** 시리즈 이름 뒤의 회차 제목: '서리풀 서초9 시리즈 7, 피아노 듀엣…' → '7, 피아노 듀엣…' */
+export function afterSeries(title: string, series: string) {
+  const t = title.trim()
+  const rest = t.toLowerCase().startsWith(series.toLowerCase()) ? t.slice(series.length).replace(/^[\s:,.·\-]+/, '') || t : t
+  return rest.replace(/^(\d+)\s*[,.:]\s*/, '$1회 ')
 }
 
 /** 정보가 얼마나 채워져 있는지 (병합할 때 기준이 될 쪽 고르기) */

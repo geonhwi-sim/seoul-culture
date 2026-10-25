@@ -2,7 +2,7 @@
 //   npm run fetch   (.env 또는 환경변수: SEOUL_API_KEY, KOPIS_API_KEY, KCISA_API_KEY)
 import fs from 'node:fs'
 import type { CultureEvent, EventsFile, Source } from '../src/types.ts'
-import { displayTitle, infoScore, kstDate, likelySame, sameVenue, titleKey, uniqueLinks, type RawEvent } from './lib.ts'
+import { afterSeries, displayTitle, infoScore, kstDate, likelySame, packageSeries, sameVenue, titleKey, uniqueLinks, type RawEvent } from './lib.ts'
 import { fetchKcisa } from './sources/kcisa.ts'
 import { fetchKopis } from './sources/kopis.ts'
 import { fetchSeoul } from './sources/seoul.ts'
@@ -89,7 +89,7 @@ for (const ids of byDates.values()) {
 const mergedGroups = new Map<number, RawEvent[]>()
 groups.forEach((g, i) => mergedGroups.set(find(i), [...(mergedGroups.get(find(i)) ?? []), ...g]))
 
-const events: CultureEvent[] = [...mergedGroups.values()].map((g) => {
+let events: CultureEvent[] = [...mergedGroups.values()].map((g) => {
   // 정보가 가장 많은 쪽을 기준으로, 같으면 출처 우선순위
   g.sort((a, b) => infoScore(b) - infoScore(a) || PRIORITY.indexOf(a.sources[0]) - PRIORITY.indexOf(b.sources[0]))
   const merged = { ...g[0] } as RawEvent
@@ -104,6 +104,38 @@ const events: CultureEvent[] = [...mergedGroups.values()].map((g) => {
   const { registeredAt: _, ...rest } = merged
   return { ...rest, title: displayTitle(rest.title), firstSeenAt: g.map((e) => seen[e.id]).sort()[0] }
 })
+
+// 패키지 통합: '[패키지] 서리풀 서초9 시리즈 (11월)'이 있으면 그 기간·장소 안의 같은 시리즈 회차들을
+// 패키지 하나로 묶고 회차 목록(program)으로 보여줌
+const absorbed = new Set<CultureEvent>()
+for (const p of events) {
+  const series = packageSeries(p.title)
+  if (!series || absorbed.has(p)) continue
+  const sk = titleKey(series)
+  const members = events.filter(
+    (e) =>
+      e !== p &&
+      !absorbed.has(e) &&
+      !packageSeries(e.title) &&
+      e.start >= p.start &&
+      e.end <= p.end &&
+      sameVenue(e.venue, p.venue) &&
+      titleKey(e.title).startsWith(sk),
+  )
+  if (!members.length) continue
+  members.sort((a, b) => a.start.localeCompare(b.start))
+  members.forEach((m) => absorbed.add(m))
+  const month = p.title.match(/\(\s*\d{1,2}\s*월\s*\)/)?.[0]
+  p.title = month ? `${series} ${month}` : series
+  p.program = members.map((m) => ({ date: m.start, title: afterSeries(m.title, series), time: m.time }))
+  p.booking = uniqueLinks([...p.booking, ...members.flatMap((m) => m.booking)])
+  p.sources = [...new Set([...p.sources, ...members.flatMap((m) => m.sources)])]
+  p.poster ??= members.find((m) => m.poster)?.poster
+  p.summary ??= members.find((m) => m.summary)?.summary
+  p.firstSeenAt = [p.firstSeenAt, ...members.map((m) => m.firstSeenAt)].sort()[0]
+}
+if (absorbed.size) console.log(`패키지로 묶은 회차 ${absorbed.size}건`)
+events = events.filter((e) => !absorbed.has(e))
 
 events.sort((a, b) => a.start.localeCompare(b.start) || a.title.localeCompare(b.title, 'ko'))
 
