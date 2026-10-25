@@ -112,7 +112,31 @@ export function titleKey(title: string) {
   return title
     .toLowerCase()
     .replace(/^\s*\[[^\]]*\]\s*(?=\S)/, '')
+    .replace(GENERIC_PREFIX, '')
     .replace(/[\s\p{P}\p{S}]/gu, '')
+}
+
+// 제목 앞에 붙은 분류어 ('전시 [제목]', '사진전 <제목>')
+const GENERIC_PREFIX = /^\s*(전시|연극|뮤지컬|공연|콘서트|사진전|기획전|특별전|展)\s*(?=[[<《〈「『(])/
+const BRACKETS: Record<string, string> = { '[': ']', '<': '>', '《': '》', '〈': '〉', '「': '」', '『': '』' }
+
+/**
+ * 화면에 보일 제목 정리: 분류와 겹치는 머리말('전시 ')을 떼고,
+ * 제목 전체가 괄호 하나로 싸여 있으면 벗김 ('전시 [IMPRINTS OF TIME]' → 'IMPRINTS OF TIME')
+ */
+export function displayTitle(title: string) {
+  let t = title.trim().replace(/^\s*(전시|연극|뮤지컬|공연|콘서트)\s*(?=[[<《〈「『])/, '')
+  const close = BRACKETS[t[0]]
+  if (close && t.endsWith(close) && t.indexOf(close) === t.length - 1) t = t.slice(1, -1).trim()
+  return t || title
+}
+
+/** 정보가 얼마나 채워져 있는지 (병합할 때 기준이 될 쪽 고르기) */
+export function infoScore(e: Record<string, unknown>) {
+  let s = 0
+  for (const v of Object.values(e)) if (v !== undefined && v !== '' && !(Array.isArray(v) && v.length === 0)) s++
+  const ev = e as { booking?: unknown[]; summary?: string; images?: unknown[] }
+  return s + (ev.booking?.length ? 3 : 0) + Math.min((ev.summary?.length ?? 0) / 200, 3) + (ev.images?.length ? 1 : 0)
 }
 
 /** 장소 비교용: 괄호 속 부연·공백 제거 */

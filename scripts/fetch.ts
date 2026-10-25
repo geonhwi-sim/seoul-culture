@@ -2,7 +2,7 @@
 //   npm run fetch   (.env 또는 환경변수: SEOUL_API_KEY, KOPIS_API_KEY, KCISA_API_KEY)
 import fs from 'node:fs'
 import type { CultureEvent, EventsFile, Source } from '../src/types.ts'
-import { kstDate, sameVenue, titleKey, uniqueLinks, type RawEvent } from './lib.ts'
+import { displayTitle, infoScore, kstDate, sameVenue, titleKey, uniqueLinks, type RawEvent } from './lib.ts'
 import { fetchKcisa } from './sources/kcisa.ts'
 import { fetchKopis } from './sources/kopis.ts'
 import { fetchSeoul } from './sources/seoul.ts'
@@ -72,7 +72,8 @@ for (const list of byTitle.values()) {
 }
 
 const events: CultureEvent[] = groups.map((g) => {
-  g.sort((a, b) => PRIORITY.indexOf(a.sources[0]) - PRIORITY.indexOf(b.sources[0]))
+  // 정보가 가장 많은 쪽을 기준으로, 같으면 출처 우선순위
+  g.sort((a, b) => infoScore(b) - infoScore(a) || PRIORITY.indexOf(a.sources[0]) - PRIORITY.indexOf(b.sources[0]))
   const merged = { ...g[0] } as RawEvent
   for (const other of g.slice(1)) {
     for (const [k, v] of Object.entries(other)) {
@@ -83,7 +84,7 @@ const events: CultureEvent[] = groups.map((g) => {
   merged.booking = uniqueLinks(g.flatMap((e) => e.booking))
   merged.isFree = g.some((e) => e.isFree)
   const { registeredAt: _, ...rest } = merged
-  return { ...rest, firstSeenAt: g.map((e) => seen[e.id]).sort()[0] }
+  return { ...rest, title: displayTitle(rest.title), firstSeenAt: g.map((e) => seen[e.id]).sort()[0] }
 })
 
 events.sort((a, b) => a.start.localeCompare(b.start) || a.title.localeCompare(b.title, 'ko'))
