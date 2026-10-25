@@ -1,13 +1,14 @@
 import { useEffect, useRef, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
-import { ArrowLeft, ArrowUpRight, Export, Heart, NavigationArrow, Ticket } from '@phosphor-icons/react'
+import { ArrowLeft, ArrowUpRight, CalendarBlank, CalendarPlus, Export, Heart, NavigationArrow, Ticket, X } from '@phosphor-icons/react'
 import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
 import type { BookingLink, CultureEvent } from '../types'
 import { useEvents } from '../lib/data'
-import { formatRange, weekday } from '../lib/date'
+import { formatLong, formatRange, isPermanent, today, weekday } from '../lib/date'
+import { downloadIcs } from '../lib/ics'
 import { directionLinks, hostOf, searchLinks } from '../lib/links'
-import { toggleSaved, useSaved } from '../lib/saved'
+import { setPlan, toggleSaved, usePlans, useSaved } from '../lib/saved'
 import { CategoryLine } from '../components/EventCard'
 import { Poster } from '../components/Poster'
 import { Sheet } from '../components/Sheet'
@@ -74,7 +75,12 @@ function BookingSheet({ event, onClose }: { event: CultureEvent; onClose: () => 
 
 function Facts({ e }: { e: CultureEvent }) {
   const rows: [string, React.ReactNode][] = [
-    ['기간', <span className="num">{e.start === e.end ? `${formatRange(e.start, e.end)}요일` : `${formatRange(e.start, e.end)} (${weekday(e.start)} - ${weekday(e.end)})`}</span>],
+    [
+      '기간',
+      <span className="num">
+        {e.start === e.end ? `${formatRange(e.start, e.end)}요일` : isPermanent(e) ? formatRange(e.start, e.end) : `${formatRange(e.start, e.end)} (${weekday(e.start)} - ${weekday(e.end)})`}
+      </span>,
+    ],
     ['시간', e.time],
     ['장소', [e.venue, e.area && e.area !== e.venue ? e.area : ''].filter(Boolean).join(', ')],
     ['관람료', e.price],
@@ -101,6 +107,7 @@ export default function Detail() {
   const navigate = useNavigate()
   const data = useEvents()
   const saved = useSaved()
+  const plans = usePlans()
   const [sheet, setSheet] = useState(false)
   const [expanded, setExpanded] = useState(false)
 
@@ -134,6 +141,8 @@ export default function Detail() {
     )
 
   const isSaved = saved.includes(e.id)
+  const plan = plans[e.id]
+  const t = today()
   const share = async () => {
     const url = window.location.href
     try {
@@ -165,6 +174,37 @@ export default function Detail() {
       </div>
 
       <Facts e={e} />
+
+      {e.end >= t && (
+        <section className="block">
+          <h2>언제 갈까요</h2>
+          <div className="visit">
+            <label className={`date-field ${plan ? 'set' : ''}`}>
+              <CalendarBlank size={18} />
+              {plan ? `${formatLong(plan).replace('요일', '')} 방문` : '방문일 정하기'}
+              <input
+                type="date"
+                aria-label="방문일"
+                min={e.start > t ? e.start : t}
+                max={e.end}
+                value={plan ?? ''}
+                onChange={(ev) => setPlan(e.id, ev.target.value || null)}
+              />
+            </label>
+            {plan && (
+              <>
+                <button className="ghost-btn" onClick={() => downloadIcs([{ event: e, date: plan }], `${e.title.slice(0, 30)}.ics`)}>
+                  <CalendarPlus size={16} />
+                  캘린더에 추가
+                </button>
+                <button className="ghost-btn" onClick={() => setPlan(e.id, null)} aria-label="방문일 지우기">
+                  <X size={16} />
+                </button>
+              </>
+            )}
+          </div>
+        </section>
+      )}
 
       {e.summary && (
         <section className="block">

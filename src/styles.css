@@ -140,7 +140,7 @@ h3,
   margin: 0 auto;
   height: var(--tabbar-h);
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
+  grid-template-columns: repeat(5, 1fr);
 }
 
 .tabbar a {
@@ -1045,6 +1045,262 @@ h3,
 .pin.selected {
   background: var(--accent);
   box-shadow: 0 0 0 1px var(--accent);
+}
+
+/* ── 달력 ──────────────────────────────────────── */
+
+.cal-head {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  padding-right: 10px;
+}
+
+.cal-year {
+  margin-left: 8px;
+  font-size: 15px;
+  font-weight: 500;
+  color: var(--muted);
+  letter-spacing: 0;
+}
+
+.cal-nav {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+
+.cal-nav .text-btn {
+  margin: 0 8px 0 0;
+}
+
+.cal {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  margin: 18px var(--gutter) 0;
+  border-top: 1px solid var(--ink);
+}
+
+.cal-dow {
+  padding: 10px 0 6px;
+  text-align: center;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--muted);
+}
+
+.cal-day {
+  position: relative;
+  height: 52px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-start;
+  padding-top: 7px;
+  gap: 5px;
+  font-size: 15px;
+  font-weight: 550;
+  color: var(--ink);
+  border-top: 1px solid var(--line);
+  transition: background 0.15s;
+}
+
+.cal-day > .num {
+  width: 30px;
+  height: 30px;
+  display: grid;
+  place-items: center;
+}
+
+.cal-day.sun,
+.cal-dow.sun {
+  color: var(--accent);
+}
+
+.cal-day.past {
+  color: var(--muted);
+}
+
+.cal-day.out {
+  opacity: 0.35;
+}
+
+.cal-day.today > .num {
+  box-shadow: inset 0 -2px 0 var(--ink);
+}
+
+.cal-day.selected > .num {
+  background: var(--ink);
+  color: var(--bg);
+  box-shadow: none;
+}
+
+.cal-day .marks {
+  position: absolute;
+  bottom: 6px;
+  display: flex;
+  gap: 3px;
+}
+
+.cal i,
+.cal-legend i {
+  display: block;
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+}
+
+i.plan {
+  background: var(--accent);
+}
+
+i.last {
+  background: var(--muted);
+}
+
+.cal-legend {
+  display: flex;
+  gap: 16px;
+  margin: 0 var(--gutter);
+  padding: 12px 0 0;
+  border-top: 1px solid var(--line);
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.cal-legend span {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.cal-legend i {
+  display: inline-block;
+}
+
+.block-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  margin-bottom: 12px;
+}
+
+.block-head h2 {
+  margin: 0;
+}
+
+.block-head .text-btn {
+  margin: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 13px;
+}
+
+.plan-list {
+  display: grid;
+  gap: 18px;
+}
+
+.plan-row {
+  display: grid;
+  gap: 10px;
+}
+
+.plan-btn {
+  justify-self: start;
+  margin-left: 78px;
+  height: 34px;
+  padding: 0 14px;
+  font-size: 13px;
+  font-weight: 600;
+  border: 1px solid var(--line);
+  color: var(--ink);
+}
+
+.plan-btn.on {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.upcoming {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  border-top: 1px solid var(--line);
+}
+
+.upcoming li {
+  display: grid;
+  grid-template-columns: 56px 1fr;
+  gap: 12px;
+  align-items: baseline;
+  padding: 12px 0;
+  border-bottom: 1px solid var(--line);
+}
+
+.upcoming button {
+  text-align: left;
+  font-size: 17px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  color: var(--accent);
+}
+
+.upcoming a strong {
+  display: block;
+  font-size: 15px;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  line-height: 1.35;
+  word-break: keep-all;
+}
+
+.upcoming a span {
+  display: block;
+  margin-top: 2px;
+  font-size: 13px;
+  color: var(--muted);
+}
+
+/* 상세: 방문일 */
+.visit {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.date-field {
+  position: relative;
+  height: 44px;
+  flex: 1;
+  min-width: 160px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 14px;
+  border: 1px solid var(--line);
+  font-size: 15px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.date-field.set {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.date-field input {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  width: 100%;
+  cursor: pointer;
+}
+
+.visit .ghost-btn {
+  padding: 0 14px;
 }
 
 /* ── 빈 상태 / 오류 ────────────────────────────── */

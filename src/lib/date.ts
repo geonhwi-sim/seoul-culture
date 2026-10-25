@@ -28,8 +28,8 @@ export function weekday(iso: string) {
   return WEEK[new Date(iso + 'T00:00:00').getDay()]
 }
 
-/** 3년 넘게 이어지는 상설 전시·오픈런 */
-export const isPermanent = (e: { start: string; end: string }) => daysBetween(e.start, e.end) > 365 * 3
+/** 상설 전시·오픈런: 종료일이 2년 넘게 남은 것 (오래 했어도 끝날 날이 가까우면 상설 아님) */
+export const isPermanent = (e: { start: string; end: string }) => daysBetween(today(), e.end) > 365 * 2
 
 /** '10.25 - 11.30', 하루짜리는 '12.24 목', 상설은 '2023.06.15 - 상시' */
 export function formatRange(start: string, end: string) {
