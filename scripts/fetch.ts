@@ -2,7 +2,7 @@
 //   npm run fetch   (.env 또는 환경변수: SEOUL_API_KEY, KOPIS_API_KEY, KCISA_API_KEY)
 import fs from 'node:fs'
 import type { CultureEvent, EventsFile, Source } from '../src/types.ts'
-import { kstDate, titleKey, uniqueLinks, type RawEvent } from './lib.ts'
+import { kstDate, sameVenue, titleKey, uniqueLinks, type RawEvent } from './lib.ts'
 import { fetchKcisa } from './sources/kcisa.ts'
 import { fetchKopis } from './sources/kopis.ts'
 import { fetchSeoul } from './sources/seoul.ts'
@@ -52,15 +52,26 @@ for (const [source, key, run] of jobs) {
 const baseline = firstRun ? kstDate(-30) : today
 for (const e of raw) seen[e.id] ??= e.registeredAt && e.registeredAt < today ? e.registeredAt : baseline
 
-// 같은 행사 병합: 제목 + 시작일. 정보는 kopis > seoul > kcisa 순으로 우선
+// 같은 행사 병합: 제목이 같고 기간이 겹치며 장소가 비슷하면 하나로.
+// (같은 공연의 다른 극장 투어는 장소가 달라 따로 남음) 정보는 kopis > seoul > kcisa 순으로 우선
 const PRIORITY: Source[] = ['kopis', 'seoul', 'kcisa']
-const groups = new Map<string, RawEvent[]>()
+const byTitle = new Map<string, RawEvent[]>()
 for (const e of raw) {
-  const k = titleKey(e.title) + '|' + e.start
-  groups.set(k, [...(groups.get(k) ?? []), e])
+  const k = titleKey(e.title)
+  byTitle.set(k, [...(byTitle.get(k) ?? []), e])
+}
+const groups: RawEvent[][] = []
+for (const list of byTitle.values()) {
+  const clusters: RawEvent[][] = []
+  for (const e of list) {
+    const c = clusters.find((g) => g.some((o) => o.start <= e.end && e.start <= o.end && sameVenue(o.venue, e.venue)))
+    if (c) c.push(e)
+    else clusters.push([e])
+  }
+  groups.push(...clusters)
 }
 
-const events: CultureEvent[] = [...groups.values()].map((g) => {
+const events: CultureEvent[] = groups.map((g) => {
   g.sort((a, b) => PRIORITY.indexOf(a.sources[0]) - PRIORITY.indexOf(b.sources[0]))
   const merged = { ...g[0] } as RawEvent
   for (const other of g.slice(1)) {

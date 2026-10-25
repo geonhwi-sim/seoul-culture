@@ -103,12 +103,38 @@ export function uniqueLinks(links: BookingLink[]) {
     .sort((a, b) => rank(a) - rank(b))
 }
 
-/** 같은 행사 판별용 제목 정규화: 괄호 속 부연·공백·기호 제거 */
+/**
+ * 같은 행사 판별용 제목 정규화.
+ * 맨 앞 기관명 머리말([세종문화회관] 등)만 떼고, 괄호 기호·공백·문장부호는 지우되 괄호 안 내용은 남김
+ * (출처마다 [제목], <제목>, 《제목》 으로 표기가 달라서)
+ */
 export function titleKey(title: string) {
   return title
     .toLowerCase()
-    .replace(/\[[^\]]*\]|\([^)]*\)|〈|〉|<|>|《|》|「|」|『|』/g, '')
+    .replace(/^\s*\[[^\]]*\]\s*(?=\S)/, '')
     .replace(/[\s\p{P}\p{S}]/gu, '')
+}
+
+/** 장소 비교용: 괄호 속 부연·공백 제거 */
+export function venueKey(venue: string) {
+  return venue
+    .toLowerCase()
+    .replace(/\([^)]*\)/g, '')
+    .replace(/[\s\p{P}\p{S}]/gu, '')
+}
+
+/**
+ * 장소 이름이 비슷한지: 4글자 이상 이어서 겹치는 부분이 있으면 같은 곳으로 봄
+ * ('대학로 종로마루홀' ↔ '종로노인종합복지관 종로마루홀', '북서울꿈의숲' ↔ '북서울 꿈의숲')
+ */
+export function sameVenue(a: string, b: string) {
+  const x = venueKey(a)
+  const y = venueKey(b)
+  if (!x || !y) return true
+  const [short, long] = x.length <= y.length ? [x, y] : [y, x]
+  if (short.length < 4) return long.includes(short)
+  for (let i = 0; i + 4 <= short.length; i++) if (long.includes(short.slice(i, i + 4))) return true
+  return false
 }
 
 export async function fetchText(url: string, tries = 3): Promise<string> {

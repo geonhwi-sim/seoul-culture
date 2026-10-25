@@ -206,6 +206,14 @@ export default function Detail() {
                 max={e.end}
                 value={plan ?? ''}
                 onChange={(ev) => setPlan(e.id, ev.target.value || null)}
+                // PC 크롬은 달력 아이콘 자리만 눌러야 열려서, 어디를 눌러도 날짜 선택창을 직접 엶
+                onClick={(ev) => {
+                  try {
+                    ev.currentTarget.showPicker()
+                  } catch {
+                    /* showPicker 미지원 브라우저는 기본 동작 */
+                  }
+                }}
               />
             </label>
             {plan && (
