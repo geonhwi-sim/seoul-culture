@@ -30,6 +30,7 @@ export default defineConfig({
       workbox: {
         globPatterns: ['**/*.{js,css,html,svg,png,ico,woff2}'],
         navigateFallback: 'index.html',
+        importScripts: ['sw-notify.js'],
         runtimeCaching: [
           {
             // 행사 데이터: 온라인이면 최신, 오프라인이면 캐시

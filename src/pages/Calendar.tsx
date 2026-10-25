@@ -1,13 +1,15 @@
 import { useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { CalendarPlus, CaretLeft, CaretRight } from '@phosphor-icons/react'
+import { ArrowUpRight, Bell, BellRinging, CalendarPlus, CaretLeft, CaretRight } from '@phosphor-icons/react'
 import type { CultureEvent } from '../types'
 import { useEvents } from '../lib/data'
-import { addDays, formatLong, formatRange, isPermanent, isoDate, today } from '../lib/date'
-import { downloadIcs } from '../lib/ics'
-import { setPlan, usePlans, useSaved } from '../lib/saved'
+import { addDays, CULTURE_DAY_URL, formatLong, formatRange, isCultureDay, isPermanent, isoDate, today } from '../lib/date'
+import { downloadIcs, savedIcsItems } from '../lib/ics'
+import { notifySupported, setNotify, useNotify } from '../lib/reminders'
+import { setPlan, usePlans, useSaved, type Plans } from '../lib/saved'
 import { CategoryLine } from '../components/EventCard'
 import { Poster } from '../components/Poster'
+import { Sheet } from '../components/Sheet'
 import { ErrorState } from '../components/States'
 
 const WEEK = ['일', '월', '화', '수', '목', '금', '토']
@@ -53,6 +55,8 @@ export default function Calendar() {
   const t = today()
   const [month, setMonth] = useState(t.slice(0, 7))
   const [day, setDay] = useState(t)
+  const [alarmSheet, setAlarmSheet] = useState(false)
+  const notify = useNotify()
 
   const events = useMemo(() => (data.status === 'ready' ? saved.map((id) => data.byId.get(id)).filter((e): e is CultureEvent => !!e) : []), [data, saved])
 
@@ -89,6 +93,9 @@ export default function Calendar() {
           {Number(month.slice(5))}월<span className="cal-year">{month.slice(0, 4)}</span>
         </h1>
         <div className="cal-nav">
+          <button className="icon-btn" aria-label="알림 설정" onClick={() => setAlarmSheet(true)}>
+            {notify.on ? <BellRinging size={20} weight="fill" color="var(--accent)" /> : <Bell size={20} />}
+          </button>
           {month !== t.slice(0, 7) && (
             <button className="text-btn" onClick={() => pickDay(t)}>
               오늘
@@ -111,7 +118,7 @@ export default function Calendar() {
         ))}
         {monthGrid(month).map((d) => {
           const mk = marks.get(d)
-          const cls = ['cal-day', d.slice(0, 7) !== month && 'out', d === t && 'today', d === day && 'selected', d < t && 'past', new Date(d + 'T00:00:00').getDay() === 0 && 'sun']
+          const cls = ['cal-day', d.slice(0, 7) !== month && 'out', d === t && 'today', d === day && 'selected', d < t && 'past', new Date(d + 'T00:00:00').getDay() === 0 && 'sun', isCultureDay(d) && 'wday']
           return (
             <button key={d} className={cls.filter(Boolean).join(' ')} onClick={() => pickDay(d)} aria-pressed={d === day} aria-label={formatLong(d)}>
               <span className="num">{Number(d.slice(8))}</span>
@@ -132,7 +139,17 @@ export default function Calendar() {
           <i className="last" />
           찜한 행사 마지막 날
         </span>
+        <span>
+          <i className="wday" />
+          문화가 있는 날
+        </span>
       </div>
+      {isCultureDay(day) && (
+        <a className="cal-note" href={CULTURE_DAY_URL} target="_blank" rel="noopener noreferrer">
+          수요일은 문화가 있는 날이에요. 국공립 미술관·박물관 무료·할인, 공연 할인이 있어요.
+          <ArrowUpRight size={13} />
+        </a>
+      )}
 
       {data.status === 'ready' && events.length === 0 ? (
         <div className="empty">
@@ -179,7 +196,7 @@ export default function Calendar() {
             <section className="block">
               <div className="block-head">
                 <h2>다가오는 방문</h2>
-                <button className="text-btn" onClick={() => downloadIcs(upcoming.map((e) => ({ event: e, date: plans[e.id] })), '지금서울-방문일정.ics')}>
+                <button className="text-btn" onClick={() => downloadIcs(upcoming.map((e) => ({ event: e, date: plans[e.id], kind: 'visit' as const })), '지금서울-방문일정.ics')}>
                   <CalendarPlus size={16} />
                   캘린더로 내보내기
                 </button>
@@ -202,6 +219,52 @@ export default function Calendar() {
           <div className="footer-note" />
         </>
       )}
+
+      {alarmSheet && <AlarmSheet events={events} plans={plans} onClose={() => setAlarmSheet(false)} />}
     </div>
+  )
+}
+
+function AlarmSheet({ events, plans, onClose }: { events: CultureEvent[]; plans: Plans; onClose: () => void }) {
+  const notify = useNotify()
+  const [msg, setMsg] = useState('')
+  const t = today()
+  const items = savedIcsItems(events, plans, t)
+  const supported = notifySupported()
+
+  const toggle = async () => {
+    const ok = await setNotify(!notify.on)
+    setMsg(ok ? '' : '알림 권한이 거부됐어요. 브라우저 설정에서 허용해 주세요.')
+  }
+
+  return (
+    <Sheet onClose={onClose} label="알림 설정">
+      <h2>알림</h2>
+      <p className="sub">찜한 행사를 기준으로 알려드려요. 예매 오픈일은 공개 데이터에 없어 알림을 드릴 수 없어요.</p>
+
+      <div className="alarm-option">
+        <div>
+          <b>휴대폰 캘린더 알림</b>
+          <span>가장 확실한 방법이에요. 앱을 열지 않아도 캘린더 앱이 알려줘요. 방문 전날, 개막 전날, 종료 3일 전 오전 9시.</span>
+        </div>
+        <button className="primary-btn small" disabled={!items.length} onClick={() => downloadIcs(items, '지금서울-찜-일정.ics')}>
+          <CalendarPlus size={17} />
+          {items.length ? `일정 ${items.length}개 내보내기` : '내보낼 일정 없음'}
+        </button>
+      </div>
+
+      <div className="alarm-option">
+        <div>
+          <b>앱 알림</b>
+          <span>
+            {supported
+              ? '앱을 열 때 오늘·내일 방문, 개막, 종료 임박 알림을 띄워요. 아이폰은 홈 화면에 설치한 앱에서만 돼요.'
+              : '이 브라우저는 알림을 지원하지 않아요. 아이폰은 홈 화면에 설치한 뒤 사용할 수 있어요.'}
+          </span>
+        </div>
+        <button className="switch" role="switch" aria-checked={notify.on} disabled={!supported} onClick={toggle} aria-label="앱 알림" />
+      </div>
+      {msg && <p className="sub error">{msg}</p>}
+    </Sheet>
   )
 }

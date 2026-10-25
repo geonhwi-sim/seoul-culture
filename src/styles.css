@@ -1303,6 +1303,264 @@ i.last {
   padding: 0 14px;
 }
 
+/* ── 알림 · 문화가 있는 날 · 내 주변 ───────────── */
+
+.reminders {
+  margin: 14px var(--gutter) 0;
+  padding: 0;
+  list-style: none;
+  border-top: 1px solid var(--ink);
+}
+
+.reminders a {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: 10px;
+  min-height: 46px;
+  font-size: 14px;
+  border-bottom: 1px solid var(--line);
+}
+
+.reminders b {
+  color: var(--accent);
+  font-weight: 650;
+  white-space: nowrap;
+}
+
+.reminders span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--ink-2);
+}
+
+.culture-day {
+  margin: 28px var(--gutter) 0;
+  padding: 16px;
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 12px;
+  background: var(--surface-2);
+}
+
+.culture-day b {
+  display: block;
+  font-size: 16px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+
+.culture-day div span {
+  display: block;
+  margin-top: 4px;
+  font-size: 13px;
+  color: var(--muted);
+  word-break: keep-all;
+}
+
+.culture-day-link {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  font-size: 13px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.near-prompt {
+  margin: 12px var(--gutter) 0;
+  width: calc(100% - var(--gutter) * 2);
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 16px;
+  text-align: left;
+  border: 1px solid var(--line);
+}
+
+.near-prompt b {
+  display: block;
+  font-size: 15px;
+  font-weight: 650;
+}
+
+.near-prompt small {
+  display: block;
+  font-size: 13px;
+  color: var(--muted);
+}
+
+.meta .dist {
+  margin-right: 6px;
+  color: var(--ink);
+  font-weight: 650;
+}
+
+.result-count {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.sort-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--muted);
+}
+
+.sort-btn[aria-pressed='true'] {
+  color: var(--ink);
+}
+
+.cal-day.wday::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: var(--surface-2);
+  z-index: -1;
+}
+
+.cal-day {
+  isolation: isolate;
+}
+
+.cal-legend i.wday {
+  width: 10px;
+  height: 10px;
+  border-radius: 0;
+  background: var(--surface-2);
+  outline: 1px solid var(--line);
+}
+
+.cal-legend {
+  flex-wrap: wrap;
+  row-gap: 6px;
+}
+
+.cal-note {
+  margin: 14px var(--gutter) 0;
+  display: flex;
+  gap: 4px;
+  align-items: flex-start;
+  font-size: 13px;
+  color: var(--ink-2);
+  word-break: keep-all;
+}
+
+.alarm-option {
+  display: grid;
+  gap: 12px;
+  padding: 18px 0;
+  border-top: 1px solid var(--line);
+  margin-top: 16px;
+}
+
+.alarm-option + .alarm-option {
+  margin-top: 0;
+  grid-template-columns: 1fr auto;
+  align-items: center;
+}
+
+.alarm-option b {
+  display: block;
+  font-size: 15px;
+  font-weight: 650;
+}
+
+.alarm-option span {
+  display: block;
+  margin-top: 4px;
+  font-size: 13px;
+  line-height: 1.55;
+  color: var(--muted);
+  word-break: keep-all;
+}
+
+.primary-btn.small {
+  height: 46px;
+  font-size: 15px;
+}
+
+.primary-btn:disabled {
+  opacity: 0.4;
+}
+
+.switch {
+  position: relative;
+  width: 48px;
+  height: 28px;
+  background: var(--line);
+  transition: background 0.2s;
+}
+
+.switch::after {
+  content: '';
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 22px;
+  height: 22px;
+  background: var(--bg);
+  transition: transform 0.2s var(--ease);
+}
+
+.switch[aria-checked='true'] {
+  background: var(--accent);
+}
+
+.switch[aria-checked='true']::after {
+  transform: translateX(20px);
+}
+
+.switch:disabled {
+  opacity: 0.4;
+}
+
+.sub.error {
+  color: var(--accent);
+}
+
+.locate-btn {
+  position: absolute;
+  right: 16px;
+  bottom: 28px;
+  z-index: 500;
+  width: 46px;
+  height: 46px;
+  display: grid;
+  place-items: center;
+  background: var(--bg);
+  color: var(--ink);
+  border: 1px solid var(--line);
+}
+
+.map-toast {
+  position: absolute;
+  left: 16px;
+  right: 76px;
+  bottom: 28px;
+  z-index: 500;
+  padding: 12px 14px;
+  font-size: 13px;
+  background: var(--ink);
+  color: var(--bg);
+}
+
+.me {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: var(--accent);
+  border: 3px solid var(--bg);
+  box-shadow: 0 0 0 6px color-mix(in srgb, var(--accent) 22%, transparent);
+}
+
 /* ── 빈 상태 / 오류 ────────────────────────────── */
 
 .empty {

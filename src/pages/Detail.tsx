@@ -5,7 +5,8 @@ import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
 import type { BookingLink, CultureEvent } from '../types'
 import { useEvents } from '../lib/data'
-import { formatLong, formatRange, isPermanent, today, weekday } from '../lib/date'
+import { CULTURE_DAY_URL, formatLong, formatRange, isPermanent, isPublicVenue, nextCultureDay, today, weekday } from '../lib/date'
+import { eventDistance, formatKm, useGeo } from '../lib/geo'
 import { downloadIcs } from '../lib/ics'
 import { directionLinks, hostOf, searchLinks } from '../lib/links'
 import { setPlan, toggleSaved, usePlans, useSaved } from '../lib/saved'
@@ -74,6 +75,11 @@ function BookingSheet({ event, onClose }: { event: CultureEvent; onClose: () => 
 }
 
 function Facts({ e }: { e: CultureEvent }) {
+  const geo = useGeo()
+  const km = eventDistance(geo, e)
+  const t = today()
+  // 국공립 시설이고 기간 안에 수요일이 있으면 문화가 있는 날 안내
+  const wed = isPublicVenue(e.venue) && e.end >= t ? nextCultureDay(e.start > t ? e.start : t) : undefined
   const rows: [string, React.ReactNode][] = [
     [
       '기간',
@@ -82,8 +88,19 @@ function Facts({ e }: { e: CultureEvent }) {
       </span>,
     ],
     ['시간', e.time],
-    ['장소', [e.venue, e.area && e.area !== e.venue ? e.area : ''].filter(Boolean).join(', ')],
+    ['장소', [e.venue, e.area && e.area !== e.venue ? e.area : '', km !== undefined ? `여기서 ${formatKm(km)}` : ''].filter(Boolean).join(', ')],
     ['관람료', e.price],
+    [
+      '수요일',
+      wed && wed <= e.end && (
+        <span>
+          문화가 있는 날이라 할인·무료·연장 개방이 있을 수 있어요.{' '}
+          <a href={CULTURE_DAY_URL} target="_blank" rel="noopener noreferrer">
+            참여 여부 확인
+          </a>
+        </span>
+      ),
+    ],
     ['관람 연령', e.age],
     ['러닝타임', e.runtime],
     ['출연', e.cast],
@@ -193,7 +210,7 @@ export default function Detail() {
             </label>
             {plan && (
               <>
-                <button className="ghost-btn" onClick={() => downloadIcs([{ event: e, date: plan }], `${e.title.slice(0, 30)}.ics`)}>
+                <button className="ghost-btn" onClick={() => downloadIcs([{ event: e, date: plan, kind: 'visit' }], `${e.title.slice(0, 30)}.ics`)}>
                   <CalendarPlus size={16} />
                   캘린더에 추가
                 </button>

@@ -1,9 +1,12 @@
 import { useMemo } from 'react'
 import { Link } from 'react-router-dom'
-import { CaretRight } from '@phosphor-icons/react'
+import { ArrowUpRight, CaretRight, NavigationArrow } from '@phosphor-icons/react'
 import type { CultureEvent } from '../types'
 import { useEvents } from '../lib/data'
-import { addDays, daysBetween, formatLong, formatRange, isPermanent, today } from '../lib/date'
+import { addDays, CULTURE_DAY_URL, daysBetween, formatLong, formatRange, isPermanent, nextCultureDay, today } from '../lib/date'
+import { eventDistance, requestLocation, useGeo } from '../lib/geo'
+import { computeReminders } from '../lib/reminders'
+import { usePlans, useSaved } from '../lib/saved'
 import { CardSkeleton, CategoryLine, EventCard } from '../components/EventCard'
 import { Poster } from '../components/Poster'
 import { ErrorState } from '../components/States'
@@ -16,6 +19,9 @@ const byQuality = (a: CultureEvent, b: CultureEvent) => rank(a) - rank(b)
 
 export default function Home() {
   const data = useEvents()
+  const geo = useGeo()
+  const saved = useSaved()
+  const plans = usePlans()
   const t = today()
 
   const sections = useMemo(() => {
@@ -45,6 +51,24 @@ export default function Home() {
     }
   }, [data, t])
 
+  // 내 주변: 지금 볼 수 있는 것 중 3km 안, 가까운 순
+  const nearby = useMemo(() => {
+    if (data.status !== 'ready' || geo.status !== 'ok') return []
+    return data.file.events
+      .filter((e) => e.start <= t && e.end >= t)
+      .map((e) => ({ e, km: eventDistance(geo, e) }))
+      .filter((x): x is { e: CultureEvent; km: number } => x.km !== undefined && x.km <= 3)
+      .sort((a, b) => a.km - b.km)
+  }, [data, geo, t])
+
+  const reminders = useMemo(() => {
+    if (data.status !== 'ready') return []
+    const mine = saved.map((id) => data.byId.get(id)).filter((e): e is CultureEvent => !!e)
+    return computeReminders(mine, plans, t)
+  }, [data, saved, plans, t])
+
+  const cultureDay = nextCultureDay(t)
+
   return (
     <div className="page">
       <header className="masthead">
@@ -53,6 +77,20 @@ export default function Home() {
         </div>
         <time dateTime={t}>{formatLong(t)}</time>
       </header>
+
+      {reminders.length > 0 && (
+        <ul className="reminders" aria-label="알림">
+          {reminders.slice(0, 3).map((r) => (
+            <li key={r.key}>
+              <Link to={`/e/${r.event.id}`}>
+                <b>{r.title}</b>
+                <span>{r.event.title}</span>
+                <CaretRight size={14} />
+              </Link>
+            </li>
+          ))}
+        </ul>
+      )}
 
       {data.status === 'error' && <ErrorState onRetry={data.retry} />}
 
@@ -89,6 +127,47 @@ export default function Home() {
           </span>
         </div>
       )}
+
+      {data.status === 'ready' && (
+        <a className="culture-day" href={CULTURE_DAY_URL} target="_blank" rel="noopener noreferrer">
+          <div>
+            <b>{cultureDay === t ? '오늘은 문화가 있는 날' : `${Number(cultureDay.slice(5, 7))}.${Number(cultureDay.slice(8))} 수요일은 문화가 있는 날`}</b>
+            <span>매주 수요일, 국공립 미술관·박물관 무료·할인과 연장 개방, 공연 할인</span>
+          </div>
+          <span className="culture-day-link">
+            참여 시설
+            <ArrowUpRight size={14} />
+          </span>
+        </a>
+      )}
+
+      {data.status === 'ready' &&
+        (geo.status === 'ok' ? (
+          nearby.length > 0 && (
+            <section className="section">
+              <div className="section-head">
+                <h2>내 주변에서 지금</h2>
+                <Link to="/browse?when=now&sort=near">
+                  전체
+                  <CaretRight size={12} weight="bold" />
+                </Link>
+              </div>
+              <div className="rail">
+                {nearby.slice(0, RAIL_MAX).map(({ e, km }) => (
+                  <EventCard key={e.id} event={e} distance={km} />
+                ))}
+              </div>
+            </section>
+          )
+        ) : (
+          <button className="near-prompt" onClick={requestLocation} disabled={geo.status === 'asking'}>
+            <NavigationArrow size={18} />
+            <span>
+              <b>{geo.status === 'asking' ? '위치 확인 중' : geo.status === 'denied' ? '위치 권한이 꺼져 있어요' : '내 주변 전시·공연 보기'}</b>
+              <small>{geo.status === 'denied' ? '브라우저 설정에서 위치 접근을 허용해 주세요.' : '지금 있는 곳에서 가까운 순으로 보여드려요.'}</small>
+            </span>
+          </button>
+        ))}
 
       {data.status === 'loading' && (
         <section className="section">

@@ -1,7 +1,7 @@
 import { useSyncExternalStore } from 'react'
 
 // 찜 목록과 방문 예정일: 이 기기 브라우저에만 저장
-function createStore<T>(key: string, fallback: T, valid: (v: unknown) => v is T) {
+export function createStore<T>(key: string, fallback: T, valid: (v: unknown) => v is T) {
   const listeners = new Set<() => void>()
   let value: T = fallback
   try {

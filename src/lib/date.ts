@@ -28,6 +28,19 @@ export function weekday(iso: string) {
   return WEEK[new Date(iso + 'T00:00:00').getDay()]
 }
 
+// 문화가 있는 날: 2026.4.1부터 매주 수요일 (그전엔 매달 마지막 수요일)
+export const CULTURE_DAY_URL = 'https://www.culture.go.kr/local/wday/mnthCltrLctnYList.do'
+export const isCultureDay = (iso: string) => iso >= '2026-04-01' && new Date(iso + 'T00:00:00').getDay() === 3
+
+/** 오늘 포함 가장 가까운 문화가 있는 날 */
+export function nextCultureDay(t = today()) {
+  const day = new Date(t + 'T00:00:00').getDay()
+  return addDays(t, (3 - day + 7) % 7)
+}
+
+/** 국공립·공공 문화시설로 보이는 장소 (문화가 있는 날 참여가 많음) */
+export const isPublicVenue = (venue: string) => /국립|시립|구립|도립|공립|세종문화회관|예술의전당|문화재단|아트센터|문화회관|구민회관|박물관|도서관/.test(venue)
+
 /** 상설 전시·오픈런: 종료일이 2년 넘게 남은 것 (오래 했어도 끝날 날이 가까우면 상설 아님) */
 export const isPermanent = (e: { start: string; end: string }) => daysBetween(today(), e.end) > 365 * 2
 

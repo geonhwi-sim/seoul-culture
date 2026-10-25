@@ -1,6 +1,7 @@
 import { useDeferredValue, useEffect, useMemo, useRef, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
-import { Check, MagnifyingGlass, X } from '@phosphor-icons/react'
+import { Check, MagnifyingGlass, NavigationArrow, X } from '@phosphor-icons/react'
+import { eventDistance, requestLocation, useGeo } from '../lib/geo'
 import { CATEGORIES, type CultureEvent } from '../types'
 import { useEvents } from '../lib/data'
 import { addDays, daysBetween, overlaps, today, weekend } from '../lib/date'
@@ -60,6 +61,8 @@ export default function Browse() {
   const when = params.get('when') ?? 'all'
   const free = params.get('free') === '1'
   const area = params.get('area') ?? ''
+  const near = params.get('sort') === 'near'
+  const geo = useGeo()
   const [query, setQuery] = useState(params.get('q') ?? '')
   const q = useDeferredValue(query.trim().toLowerCase())
   const [limit, setLimit] = useState(PAGE)
@@ -91,11 +94,19 @@ export default function Browse() {
           (!q || `${e.title} ${e.venue} ${e.cast ?? ''}`.toLowerCase().includes(q)),
       )
       .sort(sortFor(when))
-  }, [data, cat, free, area, when, q])
+      .map((e) => ({ e, km: near ? eventDistance(geo, e) : undefined }))
+      // 가까운 순: 좌표 없는 행사는 맨 뒤
+      .sort((a, b) => (near ? (a.km ?? Infinity) - (b.km ?? Infinity) : 0))
+  }, [data, cat, free, area, when, q, near, geo])
+
+  // 가까운 순을 켰는데 아직 위치를 모르면 물어봄
+  useEffect(() => {
+    if (near && geo.status === 'idle') requestLocation()
+  }, [near, geo.status])
 
   useEffect(() => {
     setLimit(PAGE)
-  }, [cat, free, area, when, q])
+  }, [cat, free, area, when, q, near])
 
   useEffect(() => {
     const el = sentinel.current
@@ -176,7 +187,13 @@ export default function Browse() {
 
       {data.status === 'ready' && (
         <>
-          <div className="result-count num">{results.length.toLocaleString()}개</div>
+          <div className="result-count num">
+            <span>{results.length.toLocaleString()}개</span>
+            <button className="sort-btn" aria-pressed={near} onClick={() => set('sort', near ? null : 'near')}>
+              <NavigationArrow size={14} weight={near ? 'fill' : 'regular'} />
+              {near && geo.status === 'asking' ? '위치 확인 중' : near && geo.status === 'denied' ? '위치 권한 필요' : '가까운 순'}
+            </button>
+          </div>
           {results.length === 0 ? (
             <div className="empty">
               <h2>조건에 맞는 행사가 없어요</h2>
@@ -187,8 +204,8 @@ export default function Browse() {
             </div>
           ) : (
             <div className="grid">
-              {results.slice(0, limit).map((e, i) => (
-                <EventCard key={e.id} event={e} eager={i < 4} />
+              {results.slice(0, limit).map(({ e, km }, i) => (
+                <EventCard key={e.id} event={e} eager={i < 4} distance={km} />
               ))}
             </div>
           )}

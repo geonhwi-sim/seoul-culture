@@ -1,6 +1,7 @@
 import { Link } from 'react-router-dom'
 import type { CultureEvent } from '../types'
 import { formatRange, statusLabel } from '../lib/date'
+import { formatKm } from '../lib/geo'
 import { Poster } from './Poster'
 
 export function CategoryLine({ event }: { event: CultureEvent }) {
@@ -14,14 +15,17 @@ export function CategoryLine({ event }: { event: CultureEvent }) {
   )
 }
 
-export function EventCard({ event, eager }: { event: CultureEvent; eager?: boolean }) {
+export function EventCard({ event, eager, distance }: { event: CultureEvent; eager?: boolean; distance?: number }) {
   return (
     <Link to={`/e/${event.id}`} className="card">
       <Poster event={event} eager={eager} />
       <CategoryLine event={event} />
       <h3>{event.title}</h3>
       <div className="meta">
-        <span>{event.venue}</span>
+        <span>
+          {distance !== undefined && <b className="dist num">{formatKm(distance)}</b>}
+          {event.venue}
+        </span>
         <span className="num">{formatRange(event.start, event.end)}</span>
       </div>
     </Link>

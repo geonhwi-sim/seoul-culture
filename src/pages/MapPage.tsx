@@ -10,6 +10,8 @@ import { Poster } from '../components/Poster'
 import { Sheet } from '../components/Sheet'
 import { ErrorState } from '../components/States'
 import { TILE_ATTR, TILE_URL } from './Detail'
+import { NavigationArrow } from '@phosphor-icons/react'
+import { requestLocation, useGeo } from '../lib/geo'
 
 interface Venue {
   key: string
@@ -22,6 +24,7 @@ interface Venue {
 export default function MapPage() {
   const data = useEvents()
   const [cat, setCat] = useState<Category | ''>('')
+  const geo = useGeo()
   const [pick, setPick] = useState<Venue | null>(null)
   const el = useRef<HTMLDivElement>(null)
   const map = useRef<L.Map | null>(null)
@@ -52,15 +55,30 @@ export default function MapPage() {
     const syncZoom = () => el.current?.classList.toggle('far', m.getZoom() < 14)
     m.on('zoomend', syncZoom)
     syncZoom()
-    // 위치 권한이 이미 있으면 내 주변으로
-    navigator.permissions?.query({ name: 'geolocation' }).then((p) => {
-      if (p.state === 'granted') navigator.geolocation.getCurrentPosition((pos) => map.current?.setView([pos.coords.latitude, pos.coords.longitude], 14))
-    })
     return () => {
       map.current?.remove()
       map.current = null
     }
   }, [])
+
+  // 내 위치: 처음 알게 되면 그쪽으로 이동, 파란 점 대신 링으로 표시
+  const me = useRef<L.Marker | null>(null)
+  const centered = useRef(false)
+  useEffect(() => {
+    if (geo.status !== 'ok' || !map.current) return
+    const ll: L.LatLngExpression = [geo.lat, geo.lng]
+    me.current ??= L.marker(ll, { icon: L.divIcon({ className: '', html: '<div class="me"></div>', iconSize: [18, 18] }), interactive: false, zIndexOffset: 1000 }).addTo(map.current)
+    me.current.setLatLng(ll)
+    if (!centered.current) {
+      centered.current = true
+      map.current.setView(ll, 14)
+    }
+  }, [geo])
+
+  const locate = () => {
+    if (geo.status === 'ok') map.current?.setView([geo.lat, geo.lng], 15)
+    else requestLocation()
+  }
 
   useEffect(() => {
     const g = layer.current
@@ -95,6 +113,10 @@ export default function MapPage() {
           ))}
         </div>
       </div>
+      <button className="locate-btn" onClick={locate} aria-label="내 위치로 이동" disabled={geo.status === 'asking'}>
+        <NavigationArrow size={20} weight={geo.status === 'ok' ? 'fill' : 'regular'} />
+      </button>
+      {geo.status === 'denied' && <div className="map-toast">위치 권한이 꺼져 있어요. 브라우저 설정에서 허용해 주세요.</div>}
       {data.status === 'error' && (
         <div className="map-overlay" style={{ top: 60, pointerEvents: 'auto', background: 'var(--bg)' }}>
           <ErrorState onRetry={data.retry} />
