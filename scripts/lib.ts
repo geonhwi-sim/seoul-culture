@@ -116,6 +116,64 @@ export function titleKey(title: string) {
     .replace(/[\s\p{P}\p{S}]/gu, '')
 }
 
+const norm = (s: string) => s.toLowerCase().replace(/[\s\p{P}\p{S}]/gu, '')
+
+/** 끝에 붙은 꼬리표 떼기: '난타 [명동]', 'ST-NOVA [일반 패키지]' → '난타', 'ST-NOVA' */
+function withoutQualifier(title: string) {
+  return norm(title.replace(/^\s*\[[^\]]*\]\s*(?=\S)/, '').replace(/\s*\[[^\]]*\]\s*$/, ''))
+}
+
+/** 괄호 속 핵심 제목들 (맨 앞 기관명 괄호와 끝 꼬리표 '[대학로]'는 제외, 3글자 이상) */
+function bracketCores(title: string) {
+  const body = title.replace(/^\s*\[[^\]]*\]\s*(?=\S)/, '').replace(/\s*\[[^\]]*\]\s*$/, '')
+  return [...body.matchAll(/[[<《〈「『*]([^\]>》〉」』*]+)[\]>》〉」』*]/g)].map((m) => norm(m[1])).filter((c) => c.length >= 3)
+}
+
+/** 가장 길게 이어서 겹치는 글자 수 */
+function longestCommon(a: string, b: string) {
+  let best = 0
+  const prev = new Array(b.length + 1).fill(0)
+  for (let i = 1; i <= a.length; i++) {
+    let diag = 0
+    for (let j = 1; j <= b.length; j++) {
+      const tmp = prev[j]
+      prev[j] = a[i - 1] === b[j - 1] ? diag + 1 : 0
+      if (prev[j] > best) best = prev[j]
+      diag = tmp
+    }
+  }
+  return best
+}
+
+/**
+ * 기간이 완전히 같은 두 행사가 같은 행사인지 (출처마다 제목을 다르게 붙이는 경우)
+ *  - 제목이 똑같으면 장소 표기가 달라도 같음 ('김영재 개인전' 서울문화재단 본관 ↔ 아케이드 서울)
+ *  - 장소가 비슷하면: 한 제목이 다른 제목을 포함 / 끝 꼬리표를 떼면 같음
+ *  - 출처가 다를 때만: 괄호 속 핵심 제목이 상대 제목에 있음 / 절반 이상 이어서 겹침
+ *    (같은 출처 안에서 따로 등록된 건 '월드 2인극 페스티벌, 반창고 / 우로보로스'처럼 대개 다른 작품)
+ */
+export function likelySame(
+  a: { title: string; venue: string; start: string; end: string; sources: string[]; area?: string },
+  b: typeof a,
+) {
+  if (a.start !== b.start || a.end !== b.end) return false
+  const ka = titleKey(a.title)
+  const kb = titleKey(b.title)
+  if (ka === kb) return true
+  // 장소 이름이 비슷하거나, 표기가 달라도 같은 구 ('공예별당' ↔ '서울공예박물관')
+  const venueOk = sameVenue(a.venue, b.venue)
+  if (!venueOk && !(a.area && a.area === b.area)) return false
+  // 포함 관계: 짧은 제목('은막', 'WE')은 장소 이름까지 비슷할 때만 ('WE'가 'HALLOWEEN'에 들어가는 오탐 방지)
+  const shortLen = Math.min(ka.length, kb.length)
+  if ((shortLen >= 4 || (shortLen >= 2 && venueOk)) && (ka.includes(kb) || kb.includes(ka))) return true
+  const qa = withoutQualifier(a.title)
+  if (qa.length >= 3 && qa === withoutQualifier(b.title)) return true
+  if (a.sources.some((s) => b.sources.includes(s))) return false
+  if (bracketCores(a.title).some((c) => kb.includes(c)) || bracketCores(b.title).some((c) => ka.includes(c))) return true
+  const common = longestCommon(ka, kb)
+  return common >= 4 && common >= Math.min(ka.length, kb.length) * 0.5
+}
+
 // 제목 앞에 붙은 분류어 ('전시 [제목]', '사진전 <제목>')
 const GENERIC_PREFIX = /^\s*(전시|연극|뮤지컬|공연|콘서트|사진전|기획전|특별전|展)\s*(?=[[<《〈「『(])/
 const BRACKETS: Record<string, string> = { '[': ']', '<': '>', '《': '》', '〈': '〉', '「': '」', '『': '』' }

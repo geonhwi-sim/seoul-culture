@@ -2,7 +2,7 @@
 //   npm run fetch   (.env 또는 환경변수: SEOUL_API_KEY, KOPIS_API_KEY, KCISA_API_KEY)
 import fs from 'node:fs'
 import type { CultureEvent, EventsFile, Source } from '../src/types.ts'
-import { displayTitle, infoScore, kstDate, sameVenue, titleKey, uniqueLinks, type RawEvent } from './lib.ts'
+import { displayTitle, infoScore, kstDate, likelySame, sameVenue, titleKey, uniqueLinks, type RawEvent } from './lib.ts'
 import { fetchKcisa } from './sources/kcisa.ts'
 import { fetchKopis } from './sources/kopis.ts'
 import { fetchSeoul } from './sources/seoul.ts'
@@ -71,7 +71,25 @@ for (const list of byTitle.values()) {
   groups.push(...clusters)
 }
 
-const events: CultureEvent[] = groups.map((g) => {
+// 2차 병합: 기간이 완전히 같은데 출처마다 제목을 다르게 붙인 경우 (lib.ts likelySame 참고)
+const parent = groups.map((_, i) => i)
+const find = (i: number): number => (parent[i] === i ? i : (parent[i] = find(parent[i])))
+const byDates = new Map<string, number[]>()
+groups.forEach((g, i) => {
+  for (const e of g) byDates.set(`${e.start}|${e.end}`, [...(byDates.get(`${e.start}|${e.end}`) ?? []), i])
+})
+for (const ids of byDates.values()) {
+  const uniq = [...new Set(ids)]
+  for (let x = 0; x < uniq.length; x++)
+    for (let y = x + 1; y < uniq.length; y++) {
+      const [i, j] = [uniq[x], uniq[y]]
+      if (find(i) !== find(j) && groups[i].some((a) => groups[j].some((b) => likelySame(a, b)))) parent[find(j)] = find(i)
+    }
+}
+const mergedGroups = new Map<number, RawEvent[]>()
+groups.forEach((g, i) => mergedGroups.set(find(i), [...(mergedGroups.get(find(i)) ?? []), ...g]))
+
+const events: CultureEvent[] = [...mergedGroups.values()].map((g) => {
   // 정보가 가장 많은 쪽을 기준으로, 같으면 출처 우선순위
   g.sort((a, b) => infoScore(b) - infoScore(a) || PRIORITY.indexOf(a.sources[0]) - PRIORITY.indexOf(b.sources[0]))
   const merged = { ...g[0] } as RawEvent
