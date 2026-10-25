@@ -8,6 +8,7 @@ import { useEvents } from '../lib/data'
 import { CULTURE_DAY_URL, formatLong, formatRange, isPermanent, isPublicVenue, nextCultureDay, today, weekday } from '../lib/date'
 import { eventDistance, formatKm, useGeo } from '../lib/geo'
 import { downloadIcs } from '../lib/ics'
+import { POSTER_NAME } from '../lib/transition'
 import { directionLinks, hostOf, searchLinks } from '../lib/links'
 import { setPlan, toggleSaved, usePlans, useSaved } from '../lib/saved'
 import { CategoryLine } from '../components/EventCard'
@@ -128,10 +129,6 @@ export default function Detail() {
   const [sheet, setSheet] = useState(false)
   const [expanded, setExpanded] = useState(false)
 
-  useEffect(() => {
-    window.scrollTo(0, 0)
-  }, [id])
-
   const back = () => (window.history.length > 1 ? navigate(-1) : navigate('/'))
 
   if (data.status === 'error') return <ErrorState onRetry={data.retry} />
@@ -183,7 +180,7 @@ export default function Detail() {
         </button>
       </div>
 
-      <Poster event={e} className="detail-poster" eager natural />
+      <Poster event={e} className="detail-poster" eager natural style={{ viewTransitionName: POSTER_NAME }} />
 
       <div className="detail-head">
         <CategoryLine event={e} />

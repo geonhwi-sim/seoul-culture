@@ -3,12 +3,12 @@ import { Link } from 'react-router-dom'
 import { ArrowUpRight, CaretRight, NavigationArrow } from '@phosphor-icons/react'
 import type { CultureEvent } from '../types'
 import { useEvents } from '../lib/data'
-import { addDays, CULTURE_DAY_URL, daysBetween, formatLong, formatRange, isPermanent, nextCultureDay, today } from '../lib/date'
+import { addDays, CULTURE_DAY_URL, daysBetween, formatLong, isPermanent, nextCultureDay, today } from '../lib/date'
 import { eventDistance, requestLocation, useGeo } from '../lib/geo'
 import { computeReminders } from '../lib/reminders'
 import { usePlans, useSaved } from '../lib/saved'
-import { CardSkeleton, CategoryLine, EventCard } from '../components/EventCard'
-import { Poster } from '../components/Poster'
+import { CardSkeleton, EventCard } from '../components/EventCard'
+import { HeroSlides } from '../components/HeroSlides'
 import { ErrorState } from '../components/States'
 
 const RAIL_MAX = 12
@@ -36,13 +36,16 @@ export default function Home() {
       .filter((e) => e.isFree && e.start <= addDays(t, 7))
       .sort((a, b) => a.end.localeCompare(b.end))
       .sort((a, b) => Number(isPermanent(a)) - Number(isPermanent(b)) || byQuality(a, b))
-    const lead = started.find((e) => e.category === '전시' && e.poster) ?? started.find((e) => e.poster) ?? soon.find((e) => e.poster)
+    // 대표 슬라이드: 새로 시작한 전시 → 다른 분야 → 곧 개막 순으로 포스터 있는 것 5개
+    const leads = [...started.filter((e) => e.category === '전시'), ...started.filter((e) => e.category !== '전시'), ...soon]
+      .filter((e, i, arr) => e.poster && arr.indexOf(e) === i)
+      .slice(0, 5)
     const now = all.filter((e) => e.start <= t)
     return {
-      lead,
+      leads,
       counts: { exhibitions: now.filter((e) => e.category === '전시').length, shows: now.filter((e) => e.category !== '전시').length },
       rails: [
-        { title: '새로 시작했어요', to: '/browse?when=new', items: started.filter((e) => e !== lead) },
+        { title: '새로 시작했어요', to: '/browse?when=new', items: started.filter((e) => !leads.includes(e)) },
         { title: '곧 개막해요', to: '/browse?when=soon', items: soon, wide: true },
         { title: '새로 올라왔어요', to: '/browse?when=registered', items: registered },
         { title: '이번 주에 끝나요', to: '/browse?when=ending', items: ending },
@@ -102,19 +105,7 @@ export default function Home() {
         </div>
       )}
 
-      {sections?.lead && (
-        <Link to={`/e/${sections.lead.id}`} className="lead card">
-          <Poster event={sections.lead} eager />
-          <div>
-            <CategoryLine event={sections.lead} />
-            <h2>{sections.lead.title}</h2>
-            <div className="meta">
-              <span>{sections.lead.venue}</span>
-              <span className="num">{formatRange(sections.lead.start, sections.lead.end)}</span>
-            </div>
-          </div>
-        </Link>
-      )}
+      {sections && sections.leads.length > 0 && <HeroSlides events={sections.leads} />}
 
       {sections && (
         <div className="summary-line num">

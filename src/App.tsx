@@ -1,16 +1,10 @@
-import { NavLink, Route, Routes, useLocation } from 'react-router-dom'
+import { NavLink, Outlet, ScrollRestoration, useLocation } from 'react-router-dom'
 import { CalendarBlank, Heart, House, MapTrifold, SquaresFour } from '@phosphor-icons/react'
 import { useEffect } from 'react'
-import Calendar from './pages/Calendar'
 import { useEvents } from './lib/data'
 import { today } from './lib/date'
 import { computeReminders, deliverNotifications } from './lib/reminders'
 import { usePlans, useSaved } from './lib/saved'
-import Home from './pages/Home'
-import Browse from './pages/Browse'
-import Detail from './pages/Detail'
-import MapPage from './pages/MapPage'
-import Saved from './pages/Saved'
 
 const TABS = [
   { to: '/', label: '홈', Icon: House, end: true },
@@ -39,15 +33,10 @@ export default function App() {
   return (
     <div className={`app ${detail ? 'no-tabs' : ''}`}>
       <NotificationRunner />
-      <Routes>
-        <Route path="/" element={<Home />} />
-        <Route path="/browse" element={<Browse />} />
-        <Route path="/map" element={<MapPage />} />
-        <Route path="/saved" element={<Saved />} />
-        <Route path="/calendar" element={<Calendar />} />
-        <Route path="/e/:id" element={<Detail />} />
-        <Route path="*" element={<Home />} />
-      </Routes>
+      {/* 화면 목록은 main.tsx 의 라우터에 있음 */}
+      <Outlet />
+      {/* 뒤로 가면 보던 위치로, 새 화면은 맨 위에서 (포스터가 원래 카드 자리로 돌아가려면 필요) */}
+      <ScrollRestoration />
       <footer className="tabbar" hidden={detail}>
         <nav aria-label="주요 메뉴">
           {TABS.map(({ to, label, Icon, end }) => (

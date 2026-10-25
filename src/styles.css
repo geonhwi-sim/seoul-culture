@@ -220,6 +220,188 @@ h3,
   margin-top: 8px;
 }
 
+/* ── 홈 대표 슬라이드 ──────────────────────────── */
+
+.hero {
+  padding: 18px var(--gutter) 8px;
+}
+
+.hero-stage {
+  position: relative;
+  aspect-ratio: 4 / 5;
+  overflow: hidden;
+  background: var(--surface-2);
+  touch-action: pan-y;
+  user-select: none;
+}
+
+.hero-slide {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  visibility: hidden;
+  transition:
+    opacity 0.9s var(--ease),
+    visibility 0s 0.9s;
+}
+
+.hero-slide.active {
+  opacity: 1;
+  visibility: visible;
+  transition: opacity 0.9s var(--ease);
+  z-index: 1;
+}
+
+.hero-slide .poster {
+  aspect-ratio: auto;
+  height: 100%;
+}
+
+.hero-slide img {
+  -webkit-user-drag: none;
+}
+
+/* 아주 느린 확대 (켄 번스) */
+@media (prefers-reduced-motion: no-preference) {
+  .hero-slide.active .poster img.loaded {
+    animation: kenburns 7s linear both;
+  }
+}
+
+@keyframes kenburns {
+  from {
+    transform: scale(1);
+  }
+  to {
+    transform: scale(1.07);
+  }
+}
+
+/* 진행 막대 */
+.hero-progress {
+  position: absolute;
+  z-index: 2;
+  top: 10px;
+  left: 10px;
+  right: 10px;
+  display: flex;
+  gap: 4px;
+  pointer-events: none;
+}
+
+.hero-progress span {
+  flex: 1;
+  height: 2px;
+  background: rgba(255, 255, 255, 0.38);
+  overflow: hidden;
+  box-shadow: 0 0 6px rgba(0, 0, 0, 0.18);
+}
+
+.hero-progress i {
+  display: block;
+  height: 100%;
+  width: 0;
+  background: #fff;
+}
+
+.hero-progress .done i {
+  width: 100%;
+}
+
+.hero-progress .now i {
+  animation: fill linear forwards;
+}
+
+.hero-progress .now.paused i {
+  animation-play-state: paused;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .hero-progress .now i {
+    animation: none;
+    width: 100%;
+  }
+}
+
+@keyframes fill {
+  to {
+    width: 100%;
+  }
+}
+
+.hero-caption {
+  display: block;
+  margin-top: 16px;
+  animation: caption-in 0.6s var(--ease) both;
+}
+
+.hero-caption h2 {
+  margin: 6px 0 0;
+  font-size: 24px;
+  font-weight: 750;
+  letter-spacing: -0.035em;
+  line-height: 1.25;
+  text-wrap: balance;
+}
+
+.hero-caption .meta {
+  margin-top: 8px;
+}
+
+@keyframes caption-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+}
+
+/* ── 포스터가 상세로 이어지는 화면 전환 ──────────── */
+
+::view-transition-group(poster) {
+  animation-duration: 0.5s;
+  animation-timing-function: cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+::view-transition-old(poster),
+::view-transition-new(poster) {
+  height: 100%;
+  object-fit: cover;
+  animation-duration: 0.5s;
+}
+
+::view-transition-old(root) {
+  animation: 0.2s ease-out both vt-fade-out;
+}
+
+::view-transition-new(root) {
+  animation: 0.35s 0.05s ease-out both vt-fade-in;
+}
+
+@keyframes vt-fade-out {
+  to {
+    opacity: 0;
+  }
+}
+
+@keyframes vt-fade-in {
+  from {
+    opacity: 0;
+  }
+}
+
+/* 화면 전환 중에는 페이지 등장 효과를 겹치지 않음 */
+html:active-view-transition .page {
+  animation: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  ::view-transition-group(*),
+  ::view-transition-old(*),
+  ::view-transition-new(*) {
+    animation: none !important;
+  }
+}
+
 .summary-line {
   margin: 0 var(--gutter);
   padding: 18px 0 2px;

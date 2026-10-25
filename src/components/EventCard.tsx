@@ -2,6 +2,7 @@ import { Link } from 'react-router-dom'
 import type { CultureEvent } from '../types'
 import { formatRange, statusLabel } from '../lib/date'
 import { formatKm } from '../lib/geo'
+import { markPoster, useReturnTarget } from '../lib/transition'
 import { Poster } from './Poster'
 
 export function CategoryLine({ event }: { event: CultureEvent }) {
@@ -16,8 +17,9 @@ export function CategoryLine({ event }: { event: CultureEvent }) {
 }
 
 export function EventCard({ event, eager, distance }: { event: CultureEvent; eager?: boolean; distance?: number }) {
+  const ref = useReturnTarget<HTMLAnchorElement>(event.id)
   return (
-    <Link to={`/e/${event.id}`} className="card">
+    <Link ref={ref} to={`/e/${event.id}`} className="card" viewTransition onClick={(e) => markPoster(e.currentTarget, event.id)}>
       <Poster event={event} eager={eager} />
       <CategoryLine event={event} />
       <h3>{event.title}</h3>
