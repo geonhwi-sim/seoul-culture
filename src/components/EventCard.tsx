@@ -1,0 +1,39 @@
+import { Link } from 'react-router-dom'
+import type { CultureEvent } from '../types'
+import { formatRange, statusLabel } from '../lib/date'
+import { Poster } from './Poster'
+
+export function CategoryLine({ event }: { event: CultureEvent }) {
+  const status = statusLabel(event)
+  return (
+    <div className="cat">
+      <span>{event.category}</span>
+      {status && <span className={status.hot ? 'flag' : ''}>{status.text}</span>}
+      {event.isFree && <span>무료</span>}
+    </div>
+  )
+}
+
+export function EventCard({ event, eager }: { event: CultureEvent; eager?: boolean }) {
+  return (
+    <Link to={`/e/${event.id}`} className="card">
+      <Poster event={event} eager={eager} />
+      <CategoryLine event={event} />
+      <h3>{event.title}</h3>
+      <div className="meta">
+        <span>{event.venue}</span>
+        <span className="num">{formatRange(event.start, event.end)}</span>
+      </div>
+    </Link>
+  )
+}
+
+export function CardSkeleton() {
+  return (
+    <div className="card" aria-hidden>
+      <div className="poster loading" />
+      <div className="skeleton-line" />
+      <div className="skeleton-line short" />
+    </div>
+  )
+}
