@@ -159,8 +159,8 @@ const byCat = Object.entries(Object.groupBy(events, (e) => e.category)).map(([c,
 console.log(`\n총 ${events.length}건 (${byCat.join(' · ')}) · 예매 링크 ${events.filter((e) => e.booking.length).length}건`)
 console.log(`→ public/events.json ${(fs.statSync(OUT).size / 1024).toFixed(0)}KB`)
 
-// 일부 소스가 잠시 실패해도, 지난 결과로 매운 데이터는 그대로 두고 나머지로 만든 결과를 배포한다.
-// (여기서 exit 1을 내면 뒤의 커밋·빌드·Pages 배포가 통째로 건너뛰여 사이트가 전날 데이터에 멈췄음)
+// 일부 소스가 잠시 실패해도, 지난 결과로 메운 데이터는 그대로 두고 나머지로 만든 결과를 배포한다.
+// (여기서 exit 1을 내면 뒤의 커밋·빌드·Pages 배포가 통째로 건너뛰어 사이트가 전날 데이터에 멈췄음)
 // 실패는 경고로 남겨 액션 화면·실행 요약에서 바로 보이게 하고, 모든 소스가 실패했을 때만 job을 실패로 둔다.
 if (failed.length) {
   for (const f of failed)
