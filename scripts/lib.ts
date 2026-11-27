@@ -249,16 +249,34 @@ export function sameVenue(a: string, b: string) {
   return false
 }
 
-export async function fetchText(url: string, tries = 3): Promise<string> {
+export const sleep = (ms: number) => new Promise<void>((r) => setTimeout(r, ms))
+
+/** 재시도 사이 대기: 0.6→1.2→2.4→4.8→9.6초 (±30% 흔들림, 최대 15초) */
+function retryDelay(attempt: number) {
+  const base = Math.min(15000, 600 * 2 ** attempt)
+  return base * (0.7 + Math.random() * 0.6)
+}
+
+const UA = 'seoul-culture/0.1 (+https://github.com/geonhwi-sim/seoul-culture)'
+
+/**
+ * 공개 API 텍스트 요청. 네트워크 오류·HTTP 오류는 지수 백오프로 다시 시도한다.
+ * KOPIS는 요청이 몰리면 HTTP 400으로 거절하는데 잠깐 쉬면 대개 풀리므로
+ * 재시도 횟수를 넉넉히 두고 점점 길게 기다린다.
+ */
+export async function fetchText(url: string, tries = 4): Promise<string> {
   let last: unknown
   for (let i = 0; i < tries; i++) {
     try {
-      const res = await fetch(url, { signal: AbortSignal.timeout(30000) })
+      const res = await fetch(url, {
+        signal: AbortSignal.timeout(30000),
+        headers: { 'user-agent': UA, accept: '*/*' },
+      })
       if (!res.ok) throw new Error(`HTTP ${res.status}`)
       return await res.text()
     } catch (e) {
       last = e
-      await new Promise((r) => setTimeout(r, 1000 * (i + 1)))
+      if (i < tries - 1) await sleep(retryDelay(i))
     }
   }
   throw new Error(`${url.replace(/(service(Key)?=)[^&]+/i, '$1***').replace(/8088\/[^/]+/, '8088/***')} 실패: ${last}`)

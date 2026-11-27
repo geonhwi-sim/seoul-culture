@@ -3,10 +3,17 @@
 import fs from 'node:fs'
 import { XMLParser } from 'fast-xml-parser'
 import type { Category } from '../../src/types.ts'
-import { bookingName, clean, fetchText, kstDate, mapLimit, seoulCoords, toHttps, toIsoDate, uniqueLinks, type RawEvent } from '../lib.ts'
+import { bookingName, clean, fetchText, kstDate, mapLimit, seoulCoords, sleep, toHttps, toIsoDate, uniqueLinks, type RawEvent } from '../lib.ts'
 
 const BASE = 'http://www.kopis.or.kr/openApi/restful'
 const FACILITY_CACHE = new URL('../cache/kopis-facilities.json', import.meta.url)
+
+// 목록 단계는 요청 수가 많아 KOPIS가 몰리면 HTTP 400으로 거절한다 → 간격을 두고,
+// 페이지 한 장은 5번까지, 그래도 안 되면 목록 전체를 45초 쉬었다가 한 번 더 시도한다.
+const LIST_PAUSE_MS = 200
+const LIST_TRIES = 5
+const LIST_ATTEMPTS = 2
+const LIST_RETRY_PAUSE_MS = 45_000
 
 const GENRES: [string, Category][] = [
   ['GGGA', '뮤지컬'],
@@ -41,7 +48,6 @@ interface Facility {
 
 export async function fetchKopis(key: string, today: string, until: string): Promise<RawEvent[]> {
   // 1) 목록: 장르별 × 30일 구간 (기간 조회 범위 제한이 있어 나눠서 요청)
-  const ids = new Map<string, Category>()
   const windows: [string, string][] = []
   for (let d = 0; ; d += 30) {
     const from = kstDate(d)
@@ -49,20 +55,38 @@ export async function fetchKopis(key: string, today: string, until: string): Pro
     const to = kstDate(d + 29) < until ? kstDate(d + 29) : until
     windows.push([from, to])
   }
-  for (const [code, category] of GENRES) {
-    for (const [from, to] of windows) {
-      for (let cpage = 1; cpage < 50; cpage++) {
-        const rows = await get('pblprfr', key, {
-          stdate: ymd(from),
-          eddate: ymd(to),
-          cpage: String(cpage),
-          rows: '100',
-          shcate: code,
-          signgucode: '11',
-        })
-        for (const r of rows) if (r.mt20id && !ids.has(String(r.mt20id))) ids.set(String(r.mt20id), category)
-        if (rows.length < 100) break
+  const ids = new Map<string, Category>()
+  for (let attempt = 1; ; attempt++) {
+    try {
+      for (const [code, category] of GENRES) {
+        for (const [from, to] of windows) {
+          for (let cpage = 1; cpage < 50; cpage++) {
+            await sleep(LIST_PAUSE_MS)
+            const rows = await get(
+              'pblprfr',
+              key,
+              {
+                stdate: ymd(from),
+                eddate: ymd(to),
+                cpage: String(cpage),
+                rows: '100',
+                shcate: code,
+                signgucode: '11',
+              },
+              LIST_TRIES,
+            )
+            for (const r of rows) if (r.mt20id && !ids.has(String(r.mt20id))) ids.set(String(r.mt20id), category)
+            if (rows.length < 100) break
+          }
+        }
       }
+      break
+    } catch (e) {
+      if (attempt >= LIST_ATTEMPTS) throw e
+      console.warn(
+        `  KOPIS 목록 ${attempt}차 실패 — ${LIST_RETRY_PAUSE_MS / 1000}초 쉬었다가 다시: ${e instanceof Error ? e.message : e}`,
+      )
+      await sleep(LIST_RETRY_PAUSE_MS)
     }
   }
 
